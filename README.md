@@ -1,6 +1,6 @@
 # mimi is a personal assistant
-she lives inside ur walls, i mean terminal.
-she is a customized ai agent built with LangChain and Llama that reflects a bit of personality.
+she lives inside ur walls, i mean terminal.  
+she is a customized ai agent built with LangChain and Llama that reflects a bit of personality.  
 
 ## features include
 - a personality
@@ -11,12 +11,12 @@ she is a customized ai agent built with LangChain and Llama that reflects a bit 
 
 ## setup
 step one: install ollama:
-`curl -fsSL https://ollama.com/install.sh | sh`
+`curl -fsSL https://ollama.com/install.sh | sh`  
 step two: pull model: 
-`ollama pull llama3.2:1b`
-step three: install uv, if you don’t have it yet. (check https://docs.astral.sh/uv/ or use the installer you already used)
+`ollama pull llama3.2:1b`  
+step three: install uv, if you don’t have it yet. (check https://docs.astral.sh/uv/ or use the installer you already used)  
 step four: install deps: 
-`uv sync`
+`uv sync`  
 step five: run: 
 `uv run python main.py`
 
