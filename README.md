@@ -1,6 +1,6 @@
 # mimi is a personal assistant
-she lives inside ur walls, i mean terminal. <\br>
-she is a customized ai agent built with LangChain and Llama that reflects a bit of personality. <\br>
+she lives inside ur walls, i mean terminal.  
+she is a customized ai agent built with LangChain and Llama that reflects a bit of personality.  
 
 ## features include
 - a personality
