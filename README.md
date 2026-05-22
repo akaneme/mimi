@@ -1,14 +1,35 @@
 # mimi is a personal assistant
 she lives inside ur walls, i mean terminal.  
-she is a customized ai agent built with LangChain and Llama that reflects a bit of personality.  
 
-## features include
+
+mimi is built using:
+- LangChain
+- Ollama
+- local LLMs
+- Gradio
+
+
+## features
 - a personality
-- calculator 
-- code snippet saver
-- can search anime using Jikan API 
-- runs locally using Ollama and is free waaa
+- local AI (runs fully on your machine waaa)
+- anime search using Jikan API
+- calculator tool
+- saves code snippets to files
+- gradio web UI
+- Ollama integration
 
+
+
+## demo
+
+(need to add screenshots/gif here later)
+
+might also add:
+- demo vid/gif
+- Gradio UI screenshots
+
+
+  
 ## setup
 step one: install ollama:
 `curl -fsSL https://ollama.com/install.sh | sh`  
