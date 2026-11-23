@@ -1,6 +1,8 @@
 # app.py
 # gradio frontend for mimi
-# run with: python app.py
+# run with: uv run python app.py
+
+import os
 
 import gradio as gr
 from langchain_core.messages import HumanMessage, AIMessage
@@ -9,32 +11,71 @@ from agent import load_agent
 
 agent_executor = load_agent()
 
-# ── chat function (this is what gradio calls) ─────────────────────────────────
-def chat(message, history):
-    # convert gradio history format → langchain messages
-    langchain_history = []
-    for msg in history:
-        if msg["role"] == "user":
-            langchain_history.append(
-                HumanMessage(content=msg["content"])
-            )
-        elif msg["role"] == "assistant":
-            langchain_history.append(
-                AIMessage(content=msg["content"])
-            )
-    
-    langchain_history.append(HumanMessage(content=message))
-    
-    response = ""
-    for chunk in agent_executor.stream({"messages": langchain_history}):
-        if "model" in chunk and "messages" in chunk["model"]:
-            for msg in chunk["model"]["messages"]:
-                response += msg.content
-        elif "tools" in chunk and "messages" in chunk["tools"]:
-            for tool_msg in chunk["tools"]["messages"]:
-                response += tool_msg.content
+# optional local avatar: drop an image at assets/mimi.png (no internet needed)
+AVATAR = "assets/mimi.png" if os.path.exists("assets/mimi.png") else None
 
-    return response if response else "..."
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+def message_text(content):
+    """gradio can hand back message content as a string or a list of blocks,
+    so normalise it to plain text"""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+        return "".join(parts)
+    return ""
+
+
+def to_langchain(history):
+    """convert gradio history format -> langchain messages"""
+    messages = []
+    for msg in history:
+        text = message_text(msg.get("content"))
+        if not text:
+            continue
+        if msg["role"] == "user":
+            messages.append(HumanMessage(content=text))
+        elif msg["role"] == "assistant":
+            messages.append(AIMessage(content=text))
+    return messages
+
+
+# ── streaming chat (this is what gradio calls) ────────────────────────────────
+def stream_reply(message, history):
+    """yields mimi's reply as it grows. stream_mode="messages" gives us the
+    model's output token by token, plus the tool results as they finish"""
+    messages = to_langchain(history) + [HumanMessage(content=message)]
+
+    reply = ""
+    last_kind = None
+    for token, meta in agent_executor.stream(
+        {"messages": messages}, stream_mode="messages"
+    ):
+        node = meta.get("langgraph_node")
+        if node == "model":
+            kind = "model"
+        elif node == "tools":
+            kind = "tool"
+        else:
+            continue
+
+        text = message_text(token.content)
+        if not text:
+            continue
+
+        # keep tool output and the model's reply on separate paragraphs
+        if reply and last_kind and kind != last_kind:
+            reply += "\n\n"
+        reply += text
+        last_kind = kind
+        yield reply
+
 
 # ── gradio ui ─────────────────────────────────────────────────────────────────
 with gr.Blocks(
@@ -54,7 +95,7 @@ with gr.Blocks(
     chatbot = gr.Chatbot(
         elem_id="chatbot",
         show_label=False,
-        avatar_images=(None, "https://api.dicebear.com/7.x/bottts/svg?seed=mimi")
+        avatar_images=(None, AVATAR),
     )
 
     with gr.Row():
@@ -79,17 +120,23 @@ with gr.Blocks(
 
     # ── event handlers ────────────────────────────────────────────────────────
     def respond(message, chat_history):
-        bot_response = chat(message, chat_history)
+        if not message.strip():
+            yield "", chat_history
+            return
 
-        chat_history.append(
-            {"role": "user", "content": message}
-        )
+        history = chat_history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": ""},
+        ]
+        yield "", history
 
-        chat_history.append(
-            {"role": "assistant", "content": bot_response}
-        )
+        got_reply = False
+        for partial in stream_reply(message, chat_history):
+            got_reply = True
+            yield "", history[:-1] + [{"role": "assistant", "content": partial}]
 
-        return "", chat_history
+        if not got_reply:
+            yield "", history[:-1] + [{"role": "assistant", "content": "..."}]
 
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
     send.click(respond, [msg, chatbot], [msg, chatbot])
